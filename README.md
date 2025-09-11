@@ -38,10 +38,8 @@ Contributions, issues, and feature requests are welcome! Feel free to fork the r
 This project is licensed under the MIT License.
 
 ## Contact
-
 Created by Bara Almustafa  
 GitHub: [bara-almustafa](https://github.com/bara-almustafa)  
-Project URL: https://github.com/bara-almustafa/CSRF-POC-Generrator
 website of project : https://bara-almustafa.github.io/CSRF-POC-Generator
 ---
 
